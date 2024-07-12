@@ -31,7 +31,7 @@ def confusion_matrix(x: np.ndarray, y: np.ndarray) -> pd.DataFrame:
     x, x_c = utils.encode_integer(x)
     y, y_c = utils.encode_integer(y)
     unique_x, unique_y = np.unique(x), np.unique(y)
-    cm = np.empty((len(unique_x), len(unique_y)), dtype=np.int)
+    cm = np.empty((len(unique_x), len(unique_y)), dtype=int)
     for i in unique_x:
         for j in unique_y:
             cm[i, j] = np.sum((x == i) & (y == j))

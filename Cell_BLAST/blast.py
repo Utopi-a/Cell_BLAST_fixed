@@ -203,6 +203,30 @@ def amd(
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
+def wasserstein_distance_numba(u_values, v_values, u_weights=None, v_weights=None):
+    u_sorter = np.argsort(u_values)
+    v_sorter = np.argsort(v_values)
+
+    all_values = np.concatenate((u_values, v_values))
+    all_weights = np.concatenate((
+        np.ones_like(u_values) if u_weights is None else u_weights,
+        np.ones_like(v_values) if v_weights is None else v_weights,
+    ))
+
+    sorter = np.argsort(all_values)
+    all_values = all_values[sorter]
+    all_weights = all_weights[sorter]
+
+    deltas = np.diff(all_values)
+    u_cdf = np.cumsum(all_weights[:len(u_values)][u_sorter]) - 0.5 * all_weights[:len(u_values)][u_sorter]
+    v_cdf = np.cumsum(all_weights[len(u_values):][v_sorter]) - 0.5 * all_weights[len(u_values):][v_sorter]
+
+    u_cdf_sorted = np.interp(all_values[:-1], u_values[u_sorter], u_cdf)
+    v_cdf_sorted = np.interp(all_values[:-1], v_values[v_sorter], v_cdf)
+
+    return np.sum(np.abs(u_cdf_sorted - v_cdf_sorted) * deltas)
+
+@numba.jit(nopython=True, nogil=True, cache=True)
 def npd_v1(
     x: np.ndarray,
     y: np.ndarray,
@@ -230,10 +254,10 @@ def npd_v1(
         np.std(y_posterior) + np.float32(eps)
     )
     return 0.5 * (
-        scipy.stats.wasserstein_distance(
+        wasserstein_distance_numba(
             xy_posterior1[: len(x_posterior)], xy_posterior1[-len(y_posterior) :]
         )
-        + scipy.stats.wasserstein_distance(
+        + wasserstein_distance_numba(
             xy_posterior2[: len(x_posterior)], xy_posterior2[-len(y_posterior) :]
         )
     )
